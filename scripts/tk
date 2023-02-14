@@ -1,0 +1,40 @@
+#!/usr/bin/env python3
+"""
+Simple time keeping script
+"""
+import argparse
+import datetime
+
+import timekeeper
+
+
+def main():
+    """
+    Main method. Get args, keep time
+    """
+    parser = argparse.ArgumentParser(
+        "Script to keep track of time in/out of work")
+    parser.add_argument("action", default="stat",
+                        choices=["in", "out", "stat"], nargs="?")
+    parser.add_argument(
+        "--time", "-t", help="Time to use for operation", required=False)
+    parser.add_argument(
+        "--job", "-j", help="The job to work", required=False)
+
+    args, _ = parser.parse_known_args()
+    # TODO Date
+    today = timekeeper.Day()
+    the_time = None
+    if args.time is not None:
+        the_time = datetime.datetime.strptime(args.time, "%H:%M")
+    print(the_time)
+    if args.action == 'in':
+        today.inout("IN", task=args.job, the_time=the_time)
+    if args.action == 'out':
+        today.inout("OUT", task=args.job, the_time=the_time)
+    if args.action == 'stat':
+        today.stat()
+
+
+if __name__ == "__main__":
+    main()
