@@ -147,7 +147,7 @@ class Day:
             total = value[0]
             info = ", ".join([(st.strftime("%H:%M") + '->' + et.strftime("%H:%M"))
                              for st, et in value[1]])
-            print(f"{task} ==> {total} Times: {info}")
+            print(f"{task} ==> {total}\n\tTimes: {info}")
 
     def save(self):
         """
