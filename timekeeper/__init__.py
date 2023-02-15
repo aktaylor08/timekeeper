@@ -1,12 +1,25 @@
-# Timekeeper, keeps track of time
+"""Timekeeper, keeps track of time"""
 
 import datetime
 import pathlib
 
-from typing import Optional
+from collections import namedtuple
+from typing import Optional, Tuple
+
+Action = namedtuple("Action", ["time", "task", "inout"])
 
 
-class Day(object):
+class TimeKeeperException(Exception):
+    """
+    Capture exceptions
+    """
+
+    def __init__(self, message="An error occured"):
+        self.message = message
+        super().__init__(self.message)
+
+
+class Day:
     """
     Class containing objects and logic for handling a day of timekeeping
     """
@@ -27,7 +40,7 @@ class Day(object):
         the_file = the_dir / str(self.date.day)
         return the_file
 
-    def _load(self):
+    def _load(self) -> list[Action]:
         vals = []
         if self.file.exists():
             with open(self.file, "r", encoding="UTF-8") as inf:
@@ -40,10 +53,10 @@ class Day(object):
                             # Get to the date
                             the_time = the_time.replace(
                                 year=self.date.year, month=self.date.month, day=self.date.day)
-                            vals.append((the_time, task, state.strip()))
+                            vals.append(Action(the_time, task, state.strip()))
                         except Exception as exp:
-                            print("Error reading line!" + line, exp)
-
+                            raise TimeKeeperException(
+                                "Error reading line: " + line) from exp
         return vals
 
     def inout(self, inout: str, task: str = "work", the_time: Optional[datetime.datetime] = None):
@@ -55,25 +68,86 @@ class Day(object):
             task = 'work'
         inout = inout.upper()
         if inout == "OUT":
-            self.transitions.append((the_time, task, "IN"))
+            self.transitions.append(Action(the_time, task, "OUT"))
         elif inout == "IN":
-            self.transitions.append((the_time, task, "OUT"))
+            self.transitions.append(Action(the_time, task, "IN"))
         else:
-            raise Exception("Must either clock in or out!")
+            raise TimeKeeperException("Must either clock in or out!")
+        self.validate()
         self.save()
 
-    def get_state(self):
+    def validate(self):
         """
-        Get the current state of the days time
+        Validate that we are in a good state
         """
-        if len(self.transitions) == 0:
-            return "OUT"
-        else:
-            return self.transitions[-1][2]
+        if len(self.transitions) > 0:
+            current = self.transitions[0]
+            # Check that the first action of the day is in
+            if current.inout != "IN":
+                raise TimeKeeperException("First action of day must be in!")
+            for i in self.transitions[1:]:
+                # Check backwards time
+                if i.time < current.time:
+                    raise TimeKeeperException(
+                        "Time went backward, that's not good")
+                if current.inout == 'IN':
+                    # Check that we are clocking of the current
+                    # job before clocking into the next one
+                    if i.inout != "OUT":
+                        raise TimeKeeperException(
+                            "Must clock out before you can clock into next job")
+                    # Check that we aren't clocking out of a different job
+                    if i.task != current.task:
+                        raise TimeKeeperException(
+                            "Cannot clock out of job you are not working")
+                if current.inout == 'OUT' and i.inout == 'OUT':
+                    raise TimeKeeperException(
+                        "Must clock in before you can clock out")
+                current = i
+
+    def collect_times(self) -> Tuple[datetime.timedelta, dict]:
+        """
+        Return the total time tracked, and a dictonary of times by task
+        """
+        self.validate()
+        by_task = {}
+        total_time = datetime.timedelta(hours=0)
+        trans = self.transitions[:]
+        if len(trans) > 0:
+            if trans[-1].inout == 'IN':
+                trans.append(
+                    Action(datetime.datetime.now().replace(second=0, microsecond=0),
+                           self.transitions[-1].task, "OUT"))
+        for idx in range(0, len(trans), 2):
+            start = trans[idx]
+            stop = trans[idx+1]
+            delta = stop.time - start.time
+            total_time += delta
+            if start.task in by_task:
+                # Store task time and time in/out pairs there
+                task_time, pairs = by_task[start.task]
+                task_time += delta
+                pairs.append((start.time, stop.time))
+                by_task[start.task] = (task_time, pairs)
+            else:
+                by_task[start.task] = (delta, [(start.time, stop.time)])
+        return total_time, by_task
 
     def stat(self):
-        for i in self.transitions:
-            print(i)
+        """
+        Don't save after calling this function, it adds a transition to the last time
+        Assumes that validation has already happened, so we can have happy little in/out pairs
+        """
+        total_time, by_task = self.collect_times()
+        print("----------------------")
+        print("Time for: " + str(self.date))
+        print("Total: " + str(total_time))
+        print("----------------------")
+        for task, value in by_task.items():
+            total = value[0]
+            info = ", ".join([(st.strftime("%H:%M") + '->' + et.strftime("%H:%M"))
+                             for st, et in value[1]])
+            print(f"{task} ==> {total} Times: {info}")
 
     def save(self):
         """

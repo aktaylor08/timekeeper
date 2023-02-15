@@ -22,12 +22,11 @@ def main():
         "--job", "-j", help="The job to work", required=False)
 
     args, _ = parser.parse_known_args()
-    # TODO Date
+    # TODO Different dates
     today = timekeeper.Day()
     the_time = None
     if args.time is not None:
         the_time = datetime.datetime.strptime(args.time, "%H:%M")
-    print(the_time)
     if args.action == 'in':
         today.inout("IN", task=args.job, the_time=the_time)
     if args.action == 'out':
