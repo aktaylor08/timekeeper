@@ -68,8 +68,24 @@ class Day:
             task = 'work'
         inout = inout.upper()
         if inout == "OUT":
-            self.transitions.append(Action(the_time, task, "OUT"))
+            # Ensure we are clocked in
+            if len(self.transitions) < 1:
+                raise TimeKeeperException(
+                    "Cannot clock out, when not clocked in!")
+
+            stat = self.transitions[-1].inout
+            old_task = self.transitions[-1].task
+            if stat != "IN":
+                raise TimeKeeperException(
+                    "Cannot log out, when logged not logged in")
+            self.transitions.append(Action(the_time, old_task, "OUT"))
         elif inout == "IN":
+            # Log out of old task if we need to first
+            if len(self.transitions) > 0:
+                if self.transitions[-1].inout == "IN":
+                    self.transitions.append(
+                        Action(the_time, self.transitions[-1].task, "OUT"))
+
             self.transitions.append(Action(the_time, task, "IN"))
         else:
             raise TimeKeeperException("Must either clock in or out!")
@@ -146,7 +162,7 @@ class Day:
         for task, value in by_task.items():
             total = value[0]
             info = ", ".join([(st.strftime("%H:%M") + '->' + et.strftime("%H:%M"))
-                             for st, et in value[1]])
+                              for st, et in value[1]])
             print(f"{task} ==> {total}\n\tTimes: {info}")
 
     def save(self):
