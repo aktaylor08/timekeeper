@@ -15,15 +15,23 @@ def main():
     parser = argparse.ArgumentParser(
         "Script to keep track of time in/out of work")
     parser.add_argument("action", default="stat",
-                        choices=["in", "out", "stat"], nargs="?")
+                        choices=["in", "out", "stat", "long"], nargs="?")
     parser.add_argument(
         "--time", "-t", help="Time to use for operation", required=False)
     parser.add_argument(
+        "--day", "-d", help="The day to use", required=False)
+    parser.add_argument(
         "--job", "-j", help="The job to work", required=False)
+    parser.add_argument(
+        '--hours', '-l', help="How long you want to work today", required=False)
 
     args, _ = parser.parse_known_args()
     # TODO Different dates
-    today = timekeeper.Day()
+    if args.day is not None:
+        a_date = datetime.datetime.strptime(args.day, "%Y-%m-%d")
+        today = timekeeper.Day(a_date.date())
+    else:
+        today = timekeeper.Day()
     the_time = None
     if args.time is not None:
         the_time = datetime.datetime.strptime(args.time, "%H:%M")
@@ -33,6 +41,21 @@ def main():
         today.inout("OUT", task=args.job, the_time=the_time)
     if args.action == 'stat':
         today.stat()
+    if args.action == 'long':
+        if args.hours is not None:
+            provided_time = datetime.datetime.strptime(args.hours, "%H:%M")
+            midnight = datetime.datetime.strptime("00:00", "%H:%M")
+            elapsed = provided_time - midnight
+        else:
+            elapsed = datetime.timedelta(hours=8)
+        total, _ = today.collect_times()
+        remaining = elapsed - total
+        if remaining.total_seconds() < 0:
+            print("Have already worked long enough :)")
+        else:
+            # When will it be over
+            done = datetime.datetime.now() + remaining
+            print("Done at: " + done.strftime("%H:%M"))
 
 
 if __name__ == "__main__":

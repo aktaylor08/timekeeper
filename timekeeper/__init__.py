@@ -63,7 +63,8 @@ class Day:
         """
         Clock in or out
         """
-        the_time = fix_time(the_time)
+        the_time = fix_time(self.date, the_time)
+        print(self.date, the_time)
         if task is None:
             task = 'work'
         inout = inout.upper()
@@ -180,11 +181,11 @@ class Day:
                 outf.write("\n")
 
 
-def fix_time(the_time: Optional[datetime.datetime] = None):
+def fix_time(date: datetime.date, the_time: Optional[datetime.datetime] = None):
     """
     Make sure the time is okay
     """
     if the_time is None:
         the_time = datetime.datetime.now()
-    the_time.replace(second=0)
-    return the_time
+    # Zero out seconds, put into the right day
+    return the_time.replace(second=0, year=date.year, month=date.month, day=date.day)
