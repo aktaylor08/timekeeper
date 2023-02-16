@@ -155,7 +155,6 @@ class Day:
         Assumes that validation has already happened, so we can have happy little in/out pairs
         """
         total_time, by_task = self.collect_times()
-        print("----------------------")
         print(f"Time for: {self.date:%Y-%m-%d}")
         print(f"Total: {delta_to_hour_min(total_time)}")
         print("----------------------")

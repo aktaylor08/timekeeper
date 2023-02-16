@@ -4,6 +4,7 @@ Simple time keeping script
 """
 import argparse
 import datetime
+import subprocess
 
 import timekeeper
 
@@ -15,7 +16,7 @@ def main():
     parser = argparse.ArgumentParser(
         "Script to keep track of time in/out of work")
     parser.add_argument("action", default="stat",
-                        choices=["in", "out", "stat", "long", "week"], nargs="?")
+                        choices=["in", "out", "stat", "long", "week", "edit"], nargs="?")
     parser.add_argument(
         "--time", "-t", help="Time to use for operation", required=False)
     parser.add_argument(
@@ -77,6 +78,9 @@ def main():
             f"Hours for week:{timekeeper.delta_to_hour_min(total_time)}")
         for day, delta in day_times:
             print(f'\t{day:%a %Y-%m-%d}: {timekeeper.delta_to_hour_min(delta)}')
+
+    if args.action == "edit":
+        subprocess.run(['vim', today.file], check=False)
 
 
 if __name__ == "__main__":
