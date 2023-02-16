@@ -64,7 +64,6 @@ class Day:
         Clock in or out
         """
         the_time = fix_time(self.date, the_time)
-        print(self.date, the_time)
         if task is None:
             task = 'work'
         inout = inout.upper()
@@ -157,11 +156,11 @@ class Day:
         """
         total_time, by_task = self.collect_times()
         print("----------------------")
-        print("Time for: " + str(self.date))
-        print("Total: " + str(total_time))
+        print(f"Time for: {self.date:%Y-%m-%d}")
+        print(f"Total: {delta_to_hour_min(total_time)}")
         print("----------------------")
         for task, value in by_task.items():
-            total = value[0]
+            total = delta_to_hour_min(value[0])
             info = ", ".join([(st.strftime("%H:%M") + '->' + et.strftime("%H:%M"))
                               for st, et in value[1]])
             print(f"{task} ==> {total}\n\tTimes: {info}")
@@ -189,3 +188,13 @@ def fix_time(date: datetime.date, the_time: Optional[datetime.datetime] = None):
         the_time = datetime.datetime.now()
     # Zero out seconds, put into the right day
     return the_time.replace(second=0, year=date.year, month=date.month, day=date.day)
+
+
+def delta_to_hour_min(delta: datetime.timedelta) -> str:
+    """
+    Convert timedelta to hour:minute string
+    """
+    hours = delta.days * 24
+    hours += delta.seconds // 60 // 60
+    minutes = (delta.seconds // 60) % 60
+    return f"{hours}:{minutes:02}"
