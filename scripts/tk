@@ -71,6 +71,13 @@ def main():
             aday = sunday + datetime.timedelta(days=i)
             keeper = timekeeper.Day(date=aday)
             daily, _ = keeper.collect_times()
+            # Get daily to the 15 minute increment
+            seconds = daily.seconds // (60 * 15)
+            # After 12 minutes go to the next increment
+            if daily.seconds % (60 * 15) > 11 * 60:
+                seconds += 1
+            daily = datetime.timedelta(seconds=seconds * (60*15))
+
             day_times.append((aday, daily))
             total_time += daily
             # Print info, highlight the total time
