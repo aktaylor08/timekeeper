@@ -121,7 +121,8 @@ class Day:
                         "Must clock in before you can clock out")
                 current = i
 
-    def collect_times(self) -> Tuple[datetime.timedelta, dict]:
+    def collect_times(self,
+                      atime: Optional[datetime.datetime] = None) -> Tuple[datetime.timedelta, dict]:
         """
         Return the total time tracked, and a dictonary of times by task
         """
@@ -131,8 +132,14 @@ class Day:
         trans = self.transitions[:]
         if len(trans) > 0:
             if trans[-1].inout == 'IN':
+                if atime is None:
+                    atime = datetime.datetime.now()
+                newtime = datetime.datetime(
+                    year=self.date.year, month=self.date.month,
+                    day=self.date.day, hour=atime.hour, minute=atime.minute)
+
                 trans.append(
-                    Action(datetime.datetime.now().replace(second=0, microsecond=0),
+                    Action(newtime,
                            self.transitions[-1].task, "OUT"))
         for idx in range(0, len(trans), 2):
             start = trans[idx]
@@ -149,12 +156,12 @@ class Day:
                 by_task[start.task] = (delta, [(start.time, stop.time)])
         return total_time, by_task
 
-    def stat(self):
+    def stat(self, the_time: Optional[datetime.datetime] = None):
         """
         Don't save after calling this function, it adds a transition to the last time
         Assumes that validation has already happened, so we can have happy little in/out pairs
         """
-        total_time, by_task = self.collect_times()
+        total_time, by_task = self.collect_times(atime=the_time)
         print(f"Time for: {self.date:%Y-%m-%d}")
         print(f"Total: {delta_to_hour_min(total_time)}")
         print("----------------------")

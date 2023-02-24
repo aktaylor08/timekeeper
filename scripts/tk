@@ -40,7 +40,7 @@ def main():
     if args.action == 'out':
         today.inout("OUT", task=args.job, the_time=the_time)
     if args.action == 'stat':
-        today.stat()
+        today.stat(the_time)
     if args.action == 'long':
         if args.hours is not None:
             provided_time = datetime.datetime.strptime(args.hours, "%H:%M")
@@ -69,15 +69,19 @@ def main():
         day_times = []
         for i in range(7):
             aday = sunday + datetime.timedelta(days=i)
-            keeper = timekeeper.Day(date=aday)
-            daily, _ = keeper.collect_times()
+            # On "today" use the time given if provided
+            if i + offset == 0:
+                keeper = today
+                daily, _ = keeper.collect_times(the_time)
+            else:
+                keeper = timekeeper.Day(date=aday)
+                daily, _ = keeper.collect_times()
             # Get daily to the 15 minute increment
             seconds = daily.seconds // (60 * 15)
             # After 12 minutes go to the next increment
             if daily.seconds % (60 * 15) > 11 * 60:
                 seconds += 1
             daily = datetime.timedelta(seconds=seconds * (60*15))
-
             day_times.append((aday, daily))
             total_time += daily
             # Print info, highlight the total time
