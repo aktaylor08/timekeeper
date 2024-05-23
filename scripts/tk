@@ -3,6 +3,7 @@
 Simple time keeping script
 """
 import argparse
+import calendar
 import datetime
 import subprocess
 
@@ -13,18 +14,24 @@ def main():
     """
     Main method. Get args, keep time
     """
-    parser = argparse.ArgumentParser(
-        "Script to keep track of time in/out of work")
-    parser.add_argument("action", default="stat",
-                        choices=["in", "out", "stat", "long", "week", "edit"], nargs="?")
+    parser = argparse.ArgumentParser("Script to keep track of time in/out of work")
     parser.add_argument(
-        "--time", "-t", help="Time to use for operation", required=False)
+        "action",
+        default="stat",
+        choices=["in", "out", "stat", "long", "week", "card", "edit"],
+        nargs="?",
+    )
     parser.add_argument(
-        "--day", "-d", help="The day to use", required=False)
+        "--time", "-t", help="Time to use for operation", required=False
+    )
+    parser.add_argument("--day", "-d", help="The day to use", required=False)
+    parser.add_argument("--job", "-j", help="The job to work", required=False)
     parser.add_argument(
-        "--job", "-j", help="The job to work", required=False)
+        "--hours", "-l", help="How long you want to work today", required=False
+    )
     parser.add_argument(
-        '--hours', '-l', help="How long you want to work today", required=False)
+        "--weeks", "-w", help="weeks to use", required=False, default=0, type=int
+    )
 
     args, _ = parser.parse_known_args()
     if args.day is not None:
@@ -35,13 +42,13 @@ def main():
     the_time = None
     if args.time is not None:
         the_time = datetime.datetime.strptime(args.time, "%H:%M")
-    if args.action == 'in':
+    if args.action == "in":
         today.inout("IN", task=args.job, the_time=the_time)
-    if args.action == 'out':
+    if args.action == "out":
         today.inout("OUT", task=args.job, the_time=the_time)
-    if args.action == 'stat':
+    if args.action == "stat":
         today.stat(the_time)
-    if args.action == 'long':
+    if args.action == "long":
         if args.hours is not None:
             provided_time = datetime.datetime.strptime(args.hours, "%H:%M")
             midnight = datetime.datetime.strptime("00:00", "%H:%M")
@@ -64,13 +71,17 @@ def main():
         offset = -(weekday + 2)
         if offset <= -7:
             offset += 7
-        sunday = today.date + datetime.timedelta(days=offset)
+        saturday = today.date + datetime.timedelta(days=offset)
+        num_days = 7
+        if args.weeks > 0:
+            saturday = saturday - datetime.timedelta(days=(args.weeks - 1) * 7)
+            num_days = num_days * args.weeks
         total_time = datetime.timedelta(seconds=0)
         day_times = []
-        for i in range(7):
-            aday = sunday + datetime.timedelta(days=i)
+        for i in range(num_days):
+            aday = saturday + datetime.timedelta(days=i)
             # On "today" use the time given if provided
-            if i + offset == 0:
+            if aday == today.date:
                 keeper = today
                 daily, _ = keeper.collect_times(the_time)
             else:
@@ -81,17 +92,59 @@ def main():
             # After 12 minutes go to the next increment
             if daily.seconds % (60 * 15) > 11 * 60:
                 seconds += 1
-            daily = datetime.timedelta(seconds=seconds * (60*15))
+            daily = datetime.timedelta(seconds=seconds * (60 * 15))
             day_times.append((aday, daily))
             total_time += daily
             # Print info, highlight the total time
-        print(
-            f"Hours for week:{timekeeper.delta_to_hour_min(total_time)}")
+        print(f"Hours for week(s):{timekeeper.delta_to_hour_min(total_time)}")
         for day, delta in day_times:
-            print(f'\t{day:%a %Y-%m-%d}: {timekeeper.delta_to_hour_min(delta)}')
+            print(f"\t{day:%a %Y-%m-%d}: {timekeeper.delta_to_hour_min(delta)}")
+        print(f"Hours for week(s):{timekeeper.delta_to_hour_min(total_time)}")
+
+    if args.action == "card":
+        if today.date.day < 16:
+            start_day = 1
+            end_day = 15
+        else:
+            start_day = 16
+            _, end_day =  calendar.monthrange(today.date.year, today.date.month)
+        total_time = datetime.timedelta(seconds=0)
+        day_times = []
+        work_days = 0
+        work_days_passed = 0
+        for i in range(start_day, end_day + 1):
+            aday = datetime.date(today.date.year, today.date.month, i)
+            if aday.weekday() < 5:
+                print(aday)
+                work_days += 1
+                if aday <= today.date:
+                    work_days_passed += 1
+            # On "today" use the time given if provided
+            if aday == today.date:
+                keeper = today
+                daily, _ = keeper.collect_times(the_time)
+            else:
+                keeper = timekeeper.Day(date=aday)
+                daily, _ = keeper.collect_times()
+            # Get daily to the 15 minute increment
+            seconds = daily.seconds // (60 * 15)
+            # After 12 minutes go to the next increment
+            if daily.seconds % (60 * 15) > 11 * 60:
+                seconds += 1
+            daily = datetime.timedelta(seconds=seconds * (60 * 15))
+            day_times.append((aday, daily))
+            total_time += daily 
+        for day, delta in day_times:
+            print(f"\t{day:%a %Y-%m-%d}: {timekeeper.delta_to_hour_min(delta)}")
+        total_needed = work_days * 8
+        expected = (work_days_passed / work_days )* total_needed 
+        print(f"There are {work_days} work days in the period and {total_needed} hours are needed")
+        print(f"At this point you should have worked {expected} hours {work_days_passed} / {work_days}")
+        print(f"You have worked {timekeeper.delta_to_hour_min(total_time)}")
+
 
     if args.action == "edit":
-        subprocess.run(['vim', today.file], check=False)
+        subprocess.run(["vim", today.file], check=False)
 
 
 if __name__ == "__main__":
