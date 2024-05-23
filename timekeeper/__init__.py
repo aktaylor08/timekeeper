@@ -33,8 +33,7 @@ class Day:
 
     def _get_file(self):
         home = pathlib.Path.home()
-        the_dir = home / ".timekeeper" / \
-            str(self.date.year) / str(self.date.month)
+        the_dir = home / ".timekeeper" / str(self.date.year) / str(self.date.month)
         if not the_dir.exists():
             the_dir.mkdir(parents=True)
         the_file = the_dir / str(self.date.day)
@@ -48,43 +47,50 @@ class Day:
                     if len(line) != 0:
                         try:
                             timestr, task, state = line.split(",")
-                            the_time = datetime.datetime.strptime(
-                                timestr, "%H:%M")
+                            the_time = datetime.datetime.strptime(timestr, "%H:%M")
                             # Get to the date
                             the_time = the_time.replace(
-                                year=self.date.year, month=self.date.month, day=self.date.day)
+                                year=self.date.year,
+                                month=self.date.month,
+                                day=self.date.day,
+                            )
                             vals.append(Action(the_time, task, state.strip()))
                         except Exception as exp:
                             raise TimeKeeperException(
-                                "Error reading line: " + line) from exp
+                                "Error reading line: " + line
+                            ) from exp
         return vals
 
-    def inout(self, inout: str, task: str = "work", the_time: Optional[datetime.datetime] = None):
+    def inout(
+        self,
+        inout: str,
+        task: str = "work",
+        the_time: Optional[datetime.datetime] = None,
+    ):
         """
         Clock in or out
         """
         the_time = fix_time(self.date, the_time)
         if task is None:
-            task = 'work'
+            task = "work"
         inout = inout.upper()
         if inout == "OUT":
             # Ensure we are clocked in
             if len(self.transitions) < 1:
-                raise TimeKeeperException(
-                    "Cannot clock out, when not clocked in!")
+                raise TimeKeeperException("Cannot clock out, when not clocked in!")
 
             stat = self.transitions[-1].inout
             old_task = self.transitions[-1].task
             if stat != "IN":
-                raise TimeKeeperException(
-                    "Cannot log out, when logged not logged in")
+                raise TimeKeeperException("Cannot log out, when logged not logged in")
             self.transitions.append(Action(the_time, old_task, "OUT"))
         elif inout == "IN":
             # Log out of old task if we need to first
             if len(self.transitions) > 0:
                 if self.transitions[-1].inout == "IN":
                     self.transitions.append(
-                        Action(the_time, self.transitions[-1].task, "OUT"))
+                        Action(the_time, self.transitions[-1].task, "OUT")
+                    )
 
             self.transitions.append(Action(the_time, task, "IN"))
         else:
@@ -104,25 +110,26 @@ class Day:
             for i in self.transitions[1:]:
                 # Check backwards time
                 if i.time < current.time:
-                    raise TimeKeeperException(
-                        "Time went backward, that's not good")
-                if current.inout == 'IN':
+                    raise TimeKeeperException("Time went backward, that's not good")
+                if current.inout == "IN":
                     # Check that we are clocking of the current
                     # job before clocking into the next one
                     if i.inout != "OUT":
                         raise TimeKeeperException(
-                            "Must clock out before you can clock into next job")
+                            "Must clock out before you can clock into next job"
+                        )
                     # Check that we aren't clocking out of a different job
                     if i.task != current.task:
                         raise TimeKeeperException(
-                            "Cannot clock out of job you are not working")
-                if current.inout == 'OUT' and i.inout == 'OUT':
-                    raise TimeKeeperException(
-                        "Must clock in before you can clock out")
+                            "Cannot clock out of job you are not working"
+                        )
+                if current.inout == "OUT" and i.inout == "OUT":
+                    raise TimeKeeperException("Must clock in before you can clock out")
                 current = i
 
-    def collect_times(self,
-                      atime: Optional[datetime.datetime] = None) -> Tuple[datetime.timedelta, dict]:
+    def collect_times(
+        self, atime: Optional[datetime.datetime] = None
+    ) -> Tuple[datetime.timedelta, dict]:
         """
         Return the total time tracked, and a dictonary of times by task
         """
@@ -131,19 +138,21 @@ class Day:
         total_time = datetime.timedelta(hours=0)
         trans = self.transitions[:]
         if len(trans) > 0:
-            if trans[-1].inout == 'IN':
+            if trans[-1].inout == "IN":
                 if atime is None:
                     atime = datetime.datetime.now()
                 newtime = datetime.datetime(
-                    year=self.date.year, month=self.date.month,
-                    day=self.date.day, hour=atime.hour, minute=atime.minute)
+                    year=self.date.year,
+                    month=self.date.month,
+                    day=self.date.day,
+                    hour=atime.hour,
+                    minute=atime.minute,
+                )
 
-                trans.append(
-                    Action(newtime,
-                           self.transitions[-1].task, "OUT"))
+                trans.append(Action(newtime, self.transitions[-1].task, "OUT"))
         for idx in range(0, len(trans), 2):
             start = trans[idx]
-            stop = trans[idx+1]
+            stop = trans[idx + 1]
             delta = stop.time - start.time
             total_time += delta
             if start.task in by_task:
@@ -167,8 +176,12 @@ class Day:
         print("----------------------")
         for task, value in by_task.items():
             total = delta_to_hour_min(value[0])
-            info = ", ".join([(st.strftime("%H:%M") + '->' + et.strftime("%H:%M"))
-                              for st, et in value[1]])
+            info = ", ".join(
+                [
+                    (st.strftime("%H:%M") + "->" + et.strftime("%H:%M"))
+                    for st, et in value[1]
+                ]
+            )
             print(f"{task} ==> {total}\n\tTimes: {info}")
 
     def save(self):
@@ -176,7 +189,7 @@ class Day:
         Write out the information to the file
         """
         the_file = self._get_file()
-        with open(the_file, 'w', encoding="UTF-8") as outf:
+        with open(the_file, "w", encoding="UTF-8") as outf:
             for atime, task, action in self.transitions:
                 outf.write(atime.strftime("%H:%M"))
                 outf.write(",")
